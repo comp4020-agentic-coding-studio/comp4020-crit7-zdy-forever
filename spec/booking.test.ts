@@ -28,6 +28,32 @@ function bookingIds(html: string): string[] {
   return [...html.matchAll(/name="bookingId"\s+value="(\d+)"/g)].map((match) => match[1]);
 }
 
+// The mock ANU login lives in a cookie-backed session, so exercising it
+// (and the visitor case, which is simply never calling login) needs a tiny
+// per-test cookie jar rather than the bare, session-less `fetch` above.
+function makeClient() {
+  let cookie: string | undefined;
+
+  const capture = (res: Response): Response => {
+    const setCookie = res.headers.getSetCookie();
+    if (setCookie.length > 0) cookie = setCookie.map((c) => c.split(";")[0]).join("; ");
+    return res;
+  };
+
+  return {
+    get: async (path: string) => capture(await fetch(new URL(path, baseUrl), { headers: cookie ? { cookie } : {} })),
+    post: async (path: string, body: URLSearchParams) =>
+      capture(
+        await fetch(new URL(path, baseUrl), {
+          method: "POST",
+          headers: { origin: baseUrl, ...(cookie ? { cookie } : {}) },
+          body,
+          redirect: "manual",
+        }),
+      ),
+  };
+}
+
 describe("booking flow", () => {
   const bookingDate = nextWeekdayIso();
 
@@ -98,35 +124,64 @@ describe("booking flow", () => {
   });
 
   it("grants only one Free Student Hour per calendar week, enforced by the server", async () => {
-    const home = await fetch(new URL(`/?date=${bookingDate}&time=09:00&hall=new`, baseUrl));
-    const homeHtml = await home.text();
+    const client = makeClient();
+    await client.post("/api/session/login", new URLSearchParams({ returnTo: "/" }));
+
+    const homeHtml = await (await client.get(`/?date=${bookingDate}&time=09:00&hall=new`)).text();
+    expect(homeHtml, "logged-in preview should show Free Student Hour eligibility").toContain(
+      "Eligible &mdash; $0.00",
+    );
     const courtIds = availableCourtIds(homeHtml);
     expect(courtIds.length).toBeGreaterThanOrEqual(2);
 
-    const first = await post(
+    const first = await client.post(
       "/api/bookings",
       new URLSearchParams({ courtId: courtIds[0], bookingDate, startTime: "09:00" }),
     );
     expect(first.status).toBe(303);
 
-    const bookingsHtml = await (await fetch(new URL("/bookings/", baseUrl))).text();
+    const bookingsHtml = await (await client.get("/bookings/")).text();
     expect(bookingsHtml).toContain("Free Student Hour");
 
     // A second booking the same week, on a different court, must not also
     // be free — even though it's still a weekday morning slot.
-    const second = await post(
+    const second = await client.post(
       "/api/bookings",
       new URLSearchParams({ courtId: courtIds[1], bookingDate, startTime: "10:00" }),
     );
     expect(second.status).toBe(303);
     expect(second.headers.get("location")).toBe("/bookings/");
 
-    const afterHtml = await (await fetch(new URL("/bookings/", baseUrl))).text();
+    const afterHtml = await (await client.get("/bookings/")).text();
     expect(afterHtml).toContain("Student rate applies");
 
     // Clean up both bookings made in this test.
     for (const bookingId of bookingIds(afterHtml)) {
-      await post("/api/bookings/cancel", new URLSearchParams({ bookingId }));
+      await client.post("/api/bookings/cancel", new URLSearchParams({ bookingId }));
+    }
+  });
+
+  it("never grants Free Student Hour to a visitor who hasn't logged in as an ANU student", async () => {
+    const client = makeClient(); // no login call — stays a visitor for its whole life
+
+    const homeHtml = await (await client.get(`/?date=${bookingDate}&time=09:00&hall=old`)).text();
+    expect(homeHtml).toContain("Log in as an ANU student to check eligibility");
+    const [courtId] = availableCourtIds(homeHtml);
+    expect(courtId, "expected at least one available court").toBeDefined();
+
+    const confirm = await client.post(
+      "/api/bookings",
+      new URLSearchParams({ courtId, bookingDate, startTime: "09:00" }),
+    );
+    expect(confirm.status).toBe(303);
+    expect(confirm.headers.get("location")).toBe("/bookings/");
+
+    const bookingsHtml = await (await client.get("/bookings/")).text();
+    expect(bookingsHtml).toContain("Student rate applies");
+    expect(bookingsHtml).not.toContain("Free Student Hour");
+
+    for (const bookingId of bookingIds(bookingsHtml)) {
+      await client.post("/api/bookings/cancel", new URLSearchParams({ bookingId }));
     }
   });
 });
