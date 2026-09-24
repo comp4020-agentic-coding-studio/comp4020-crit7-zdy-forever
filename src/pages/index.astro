@@ -2,6 +2,8 @@
 import BookingControls from "../components/BookingControls.astro";
 import BookingSummary from "../components/BookingSummary.astro";
 import CourtMap, { type CourtTile } from "../components/CourtMap.astro";
+import IdentityBar from "../components/IdentityBar.astro";
+import { isAnuStudent } from "../lib/anu-login";
 import {
   bookedCourtIdsFor,
   DEMO_STUDENT_ID,
@@ -43,7 +45,8 @@ const tiles: CourtTile[] = courts.map((court) => ({
 
 const hallLabel = hallLabelFor(hallSlug);
 const dateLabel = formatDateLong(bookingDate);
-const eligible = isEligibleForFreeHour(DEMO_STUDENT_ID, bookingDate, startTime);
+const studentLoggedIn = await isAnuStudent(Astro.session);
+const eligible = isEligibleForFreeHour(DEMO_STUDENT_ID, bookingDate, startTime, studentLoggedIn);
 
 const errorParam = params.get("error");
 const errorMessage =
@@ -70,6 +73,8 @@ const errorMessage =
     <main>
       <h1>ANU Badminton Court Booking</h1>
 
+      <IdentityBar isAnuStudent={studentLoggedIn} returnTo={`${Astro.url.pathname}${Astro.url.search}`} />
+
       {errorMessage && <p role="alert" class="banner banner--error">{errorMessage}</p>}
 
       <BookingControls bookingDate={bookingDate} startTime={startTime} hallSlug={hallSlug} />
@@ -79,6 +84,8 @@ const errorMessage =
         {
           eligible ? (
             <strong>Eligible &mdash; $0.00</strong>
+          ) : !studentLoggedIn ? (
+            <strong>Log in as an ANU student to check eligibility</strong>
           ) : (
             <strong>Not eligible for this slot &mdash; student rate applies</strong>
           )

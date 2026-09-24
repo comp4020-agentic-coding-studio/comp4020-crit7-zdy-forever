@@ -1,4 +1,5 @@
 import type { APIRoute } from "astro";
+import { isAnuStudent } from "../../lib/anu-login";
 import { createBooking, DEMO_STUDENT_ID, getCourtById, hallSlugForLabel } from "../../lib/booking";
 import { isValidDate, isValidTimeSlot } from "../../lib/dates";
 
@@ -6,7 +7,7 @@ import { isValidDate, isValidTimeSlot } from "../../lib/dates";
 // the frontend's court map is never trusted, only what's actually in SQLite
 // right now. On success the booking is written and the student is sent to
 // My Bookings, which reads it straight back out of the database.
-export const POST: APIRoute = async ({ request, redirect }) => {
+export const POST: APIRoute = async ({ request, redirect, session }) => {
   const form = await request.formData();
   const courtId = Number(form.get("courtId"));
   const bookingDate = String(form.get("bookingDate") ?? "");
@@ -22,7 +23,16 @@ export const POST: APIRoute = async ({ request, redirect }) => {
     return backToBooking({ error: "invalid" });
   }
 
-  const result = createBooking({ studentId: DEMO_STUDENT_ID, courtId, bookingDate, startTime });
+  // Read from the session, not the form: a visitor's own request can't grant
+  // itself Free Student Hour eligibility just by claiming to be a student.
+  const studentLoggedIn = await isAnuStudent(session);
+  const result = createBooking({
+    studentId: DEMO_STUDENT_ID,
+    courtId,
+    bookingDate,
+    startTime,
+    isAnuStudent: studentLoggedIn,
+  });
 
   if (!result.ok) {
     const court = getCourtById(courtId);

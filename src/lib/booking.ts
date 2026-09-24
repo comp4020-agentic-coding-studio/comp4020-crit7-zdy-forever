@@ -81,11 +81,22 @@ function hasUsedFreeHourInWeek(studentId: string, bookingDate: string): boolean 
   return existing !== undefined;
 }
 
-// The authoritative Free Student Hour check: weekday, starts before 2pm, and
-// no free hour already used this calendar week. Depends only on the student
-// and the date/time — never on which court is picked — so callers can use it
-// both for the pre-booking preview and for the actual write.
-export function isEligibleForFreeHour(studentId: string, bookingDate: string, startTime: string): boolean {
+// The authoritative Free Student Hour check: the user must be a verified ANU
+// student, the booking must be on a weekday, start before 2pm, and no free
+// hour already used this calendar week. Depends only on the student and the
+// date/time — never on which court is picked — so callers can use it both
+// for the pre-booking preview and for the actual write.
+//
+// `isAnuStudent` must come from the server-held session, never a
+// client-supplied field: it's the one flag a tampered request could use to
+// grant itself a free booking otherwise.
+export function isEligibleForFreeHour(
+  studentId: string,
+  bookingDate: string,
+  startTime: string,
+  isAnuStudent: boolean,
+): boolean {
+  if (!isAnuStudent) return false;
   if (!isWeekday(bookingDate)) return false;
   if (startTime >= "14:00") return false;
   return !hasUsedFreeHourInWeek(studentId, bookingDate);
@@ -98,6 +109,7 @@ export function createBooking(input: {
   courtId: number;
   bookingDate: string;
   startTime: string;
+  isAnuStudent: boolean;
 }): CreateBookingResult {
   const court = getCourtById(input.courtId);
   if (!court) return { ok: false, error: "invalid-court" };
@@ -108,7 +120,12 @@ export function createBooking(input: {
     return { ok: false, error: "conflict" };
   }
 
-  const isFreeStudentHour = isEligibleForFreeHour(input.studentId, input.bookingDate, input.startTime);
+  const isFreeStudentHour = isEligibleForFreeHour(
+    input.studentId,
+    input.bookingDate,
+    input.startTime,
+    input.isAnuStudent,
+  );
 
   try {
     const booking = db

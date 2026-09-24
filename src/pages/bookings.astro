@@ -1,9 +1,12 @@
 ---
+import IdentityBar from "../components/IdentityBar.astro";
+import { isAnuStudent } from "../lib/anu-login";
 import { DEMO_STUDENT_ID, listBookingsForStudent } from "../lib/booking";
 import { formatDateLong, formatSlotLabel } from "../lib/dates";
 import "../styles.css";
 
 const bookings = listBookingsForStudent(DEMO_STUDENT_ID);
+const studentLoggedIn = await isAnuStudent(Astro.session);
 
 const params = Astro.url.searchParams;
 const cancelled = params.get("cancelled") === "1";
@@ -25,6 +28,8 @@ const notFound = params.get("error") === "not-found";
     </nav>
     <main>
       <h1>My Bookings</h1>
+
+      <IdentityBar isAnuStudent={studentLoggedIn} returnTo="/bookings/" />
 
       {notFound && (
         <p role="alert" class="banner banner--error">
