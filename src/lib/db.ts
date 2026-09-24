@@ -1,10 +1,9 @@
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import Database from "better-sqlite3";
-import { desc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import { migrate } from "drizzle-orm/better-sqlite3/migrator";
-import { type Message, messages } from "./schema";
+import { courts } from "./schema";
 
 // One SQLite file is the app's whole persistent state. In production
 // fly.toml points DATABASE_PATH at the machine's volume (/data), which is
@@ -24,12 +23,24 @@ export const db = drizzle(client);
 // commit the migration it writes to drizzle/.
 migrate(db, { migrationsFolder: "./drizzle" });
 
-export type { Message };
+// Seeds the 16 badminton courts (Old Hall 1-8, New Hall 1-8) the first time
+// this database boots against an empty courts table — a fresh local
+// .data/app.db, or a brand new Fly volume. Every later boot sees a non-empty
+// table and is a no-op, so this is safe to run on every start.
+const HALLS = ["Old Hall", "New Hall"] as const;
 
-export function listMessages(): Message[] {
-  return db.select().from(messages).orderBy(desc(messages.id)).limit(50).all();
-}
-
-export function addMessage(body: string): Message {
-  return db.insert(messages).values({ body }).returning().get();
+if (db.select({ id: courts.id }).from(courts).get() === undefined) {
+  const seedRows = HALLS.flatMap((hall) =>
+    Array.from({ length: 8 }, (_, index) => {
+      const courtNumber = index + 1;
+      return {
+        hall,
+        courtNumber,
+        name: `${hall} BM Court ${courtNumber}`,
+        displayRow: Math.floor(index / 4),
+        displayColumn: index % 4,
+      };
+    }),
+  );
+  db.insert(courts).values(seedRows).run();
 }
