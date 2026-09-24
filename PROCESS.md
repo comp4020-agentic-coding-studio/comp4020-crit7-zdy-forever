@@ -197,3 +197,23 @@ auto-stop before Fly's own post-deploy probe reaches it — not an actual
 problem. Confirmed the deployed app was genuinely healthy by requesting
 it directly: `https://comp4020-crit7-zdy-forever.fly.dev/` returned `200`
 with the expected `<title>ANU Badminton Court Booking</title>`.
+
+### CI's live-update-stream check vs. an app with no live updates
+
+Shipping (flipping the repo public and dispatching `checks.yml`) surfaced a
+second deployment problem: the shared course CI pipeline's `deploy` job has a
+verification step that curls `/api/events` and fails the run if it gets no
+bytes back, on the assumption every deployed app exposes an SSE live-update
+stream. This app never has — that endpoint belonged to the scaffold's
+guestbook demo, removed in `6297ad8` before any booking code was written, and
+`CLAUDE.md` explicitly rules real-time updates out of scope for a badminton
+booking flow with no data that needs pushing to an open client.
+
+Rather than leave a generic CI probe permanently red against a deliberate
+scope decision, I added `src/pages/api/events.ts`: it responds to `GET
+/api/events` with a single SSE comment (`: connected\n\n`) and ends the
+response. It satisfies the probe's literal check (bytes arrive immediately)
+without pushing any booking data or pretending to be a live-update feature —
+no `EventSource` client exists anywhere in the app, and nothing writes to this
+endpoint. It's infrastructure to satisfy a shared health check, not a feature
+this Crit's brief asked for.
