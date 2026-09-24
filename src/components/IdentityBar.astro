@@ -1,0 +1,38 @@
+---
+// Shows whether this browser session is a verified ANU student or an
+// anonymous visitor, with a mock login/logout toggle. Real ANU SSO is out of
+// scope (CLAUDE.md); this only exists so Free Student Hour can be gated
+// behind student status rather than granted to anyone who asks.
+interface Props {
+  isAnuStudent: boolean;
+  returnTo: string;
+}
+
+const { isAnuStudent, returnTo } = Astro.props;
+---
+
+<p class="identity-bar">
+  {
+    isAnuStudent ? (
+      <>
+        <span class="identity-bar__status">Signed in as ANU student</span>
+        <form method="post" action="/api/session/logout">
+          <input type="hidden" name="returnTo" value={returnTo} />
+          <button type="submit" class="identity-bar__button">
+            Log out
+          </button>
+        </form>
+      </>
+    ) : (
+      <>
+        <span class="identity-bar__status">Browsing as visitor (not an ANU student)</span>
+        <form method="post" action="/api/session/login">
+          <input type="hidden" name="returnTo" value={returnTo} />
+          <button type="submit" class="identity-bar__button">
+            Log in as ANU student
+          </button>
+        </form>
+      </>
+    )
+  }
+</p>

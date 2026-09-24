@@ -65,6 +65,28 @@ button:focus-visible {
   outline-offset: 2px;
 }
 
+.identity-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0 0 1rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius);
+  background: #fff;
+  border: 1px solid var(--color-border);
+  font-size: 0.9rem;
+}
+
+.identity-bar__status {
+  color: var(--color-muted);
+}
+
+.identity-bar__button {
+  padding: 0.3rem 0.7rem;
+  font-size: 0.85rem;
+}
+
 .banner {
   padding: 0.75rem 1rem;
   border-radius: var(--radius);
