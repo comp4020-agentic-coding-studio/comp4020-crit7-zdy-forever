@@ -116,6 +116,46 @@ booking with `isFreeStudentHour = 1` in the same ISO (Monday-Sunday)
 calendar week. Week boundaries are computed with `Date.UTC` arithmetic
 specifically to avoid a timezone-dependent off-by-one at the week edges.
 
+## Follow-up: mock ANU student login
+
+After the slice above was complete and documented, the client asked
+whether ANU SSO could be added, with unauthenticated visitors treated as
+outside visitors (可以加anu sso 学生认证么 没登陆之前还是当作外来人员).
+`CLAUDE.md` explicitly rules out ANU SSO, real authentication, and a login
+system, and real SSO isn't achievable without real ANU credentials anyway,
+so I flagged the conflict and proposed a mock login toggle instead of
+either refusing outright or silently building real SSO. Once the client
+confirmed a mock login button (not real SSO) and that a visitor should
+still be able to book at the student rate but not claim the Free Student
+Hour, I implemented it as a small, reversible addition on top of the
+finished slice rather than reworking the original design:
+
+- `src/lib/anu-login.ts` wraps Astro's already-enabled built-in Sessions
+  API (`@astrojs/node`'s filesystem session storage — no new dependency,
+  no new table) around a single `isAnuStudent` boolean.
+- `POST /api/session/login` and `/logout` flip that flag and redirect back
+  to `returnTo`, validated against `/^\/(?!\/)/` so a protocol-relative
+  URL (`//evil.com`) can't be used as an open redirect.
+- `isEligibleForFreeHour` and `createBooking` (`src/lib/booking.ts`) now
+  require `isAnuStudent` as an explicit argument, read from the
+  server-held session in `POST /api/bookings` — never trusted from the
+  request body, for the same reason the conflict check isn't trusted from
+  the client's last-rendered availability.
+- `IdentityBar.astro` shows the current session state and the
+  login/logout form on both the booking page and My Bookings.
+
+Commits:
+[`3d54afa`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit7-zdy-forever/commit/3d54afa) —
+add mock ANU student login toggle,
+[`bb58c32`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit7-zdy-forever/commit/bb58c32) —
+gate Free Student Hour eligibility behind login status, and
+[`f80964d`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit7-zdy-forever/commit/f80964d) —
+extend spec tests to cover the login-gated Free Student Hour. The new
+spec tests needed a small per-test cookie jar (`makeClient()` in
+`spec/booking.test.ts`) since a bare `fetch` doesn't persist `Set-Cookie`
+across requests, then added a test proving a never-logged-in visitor can
+still complete a booking but never receives a Free Student Hour.
+
 ## Instructions and context given to the coding agent
 
 I gave the agent the full `CLAUDE.md` brief and explicit constraints
