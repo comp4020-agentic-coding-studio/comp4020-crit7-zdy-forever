@@ -1,0 +1,56 @@
+---
+import { formatSlotLabel } from "../lib/dates";
+
+interface Props {
+  hallLabel: string;
+  bookingDate: string;
+  dateLabel: string;
+  startTime: string;
+  eligible: boolean;
+  selectedCourt?: { id: number; name: string };
+}
+
+const { hallLabel, bookingDate, dateLabel, startTime, eligible, selectedCourt } = Astro.props;
+---
+
+<section class="booking-summary" data-booking-summary hidden={!selectedCourt} aria-labelledby="booking-summary-heading">
+  <h2 id="booking-summary-heading">Booking Summary</h2>
+  <dl class="booking-summary__details">
+    <div>
+      <dt>Hall</dt>
+      <dd>{hallLabel}</dd>
+    </div>
+    <div>
+      <dt>Court</dt>
+      <dd data-summary-court-name>{selectedCourt?.name ?? ""}</dd>
+    </div>
+    <div>
+      <dt>Date</dt>
+      <dd>{dateLabel}</dd>
+    </div>
+    <div>
+      <dt>Time</dt>
+      <dd>{formatSlotLabel(startTime)}</dd>
+    </div>
+  </dl>
+
+  <p class="pricing-status" aria-live="polite">
+    {
+      eligible ? (
+        <>
+          <strong>Free Student Hour</strong>
+          <span>$0.00</span>
+        </>
+      ) : (
+        <span>Student rate applies</span>
+      )
+    }
+  </p>
+
+  <form method="post" action="/api/bookings">
+    <input type="hidden" name="courtId" value={selectedCourt?.id ?? ""} data-confirm-court-id />
+    <input type="hidden" name="bookingDate" value={bookingDate} />
+    <input type="hidden" name="startTime" value={startTime} />
+    <button type="submit">Confirm Booking</button>
+  </form>
+</section>

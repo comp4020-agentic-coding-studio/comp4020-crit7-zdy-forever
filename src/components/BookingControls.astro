@@ -1,0 +1,55 @@
+---
+import { HALLS, type HallSlug } from "../lib/booking";
+import { formatSlotLabel, TIME_SLOTS } from "../lib/dates";
+
+interface Props {
+  bookingDate: string;
+  startTime: string;
+  hallSlug: HallSlug;
+}
+
+const { bookingDate, startTime, hallSlug } = Astro.props;
+---
+
+<form method="get" action="/" class="booking-controls" data-booking-controls>
+  <div class="booking-controls__field">
+    <label for="date">Date</label>
+    <input type="date" id="date" name="date" value={bookingDate} required />
+  </div>
+
+  <div class="booking-controls__field">
+    <label for="time">Time</label>
+    <select id="time" name="time" required>
+      {
+        TIME_SLOTS.map((slot) => (
+          <option value={slot} selected={slot === startTime}>
+            {formatSlotLabel(slot)}
+          </option>
+        ))
+      }
+    </select>
+  </div>
+
+  <fieldset class="hall-toggle">
+    <legend>Hall</legend>
+    {
+      HALLS.map((hall) => (
+        <label class="hall-option">
+          <input type="radio" name="hall" value={hall.slug} checked={hall.slug === hallSlug} />
+          {hall.label}
+        </label>
+      ))
+    }
+  </fieldset>
+
+  <button type="submit" class="booking-controls__submit">Update availability</button>
+</form>
+
+<script>
+  // Progressive enhancement only: the button above already makes this form
+  // work with no JavaScript at all. Auto-submitting on change just saves a
+  // click — picking a new date/time/hall always needs a fresh server render
+  // anyway, since availability for that combination lives in the database.
+  const form = document.querySelector<HTMLFormElement>("[data-booking-controls]");
+  form?.addEventListener("change", () => form.requestSubmit());
+</script>

@@ -1,40 +1,332 @@
+:root {
+  --color-ink: #1a1a1a;
+  --color-muted: #5b6472;
+  --color-border: #d7dbe0;
+  --color-accent: #0b5fff;
+  --color-available-border: #0b5fff;
+  --color-selected-bg: #0b5fff;
+  --color-selected-fg: #ffffff;
+  --color-booked-bg: #eceff2;
+  --color-booked-fg: #8a919b;
+  --radius: 0.6rem;
+}
+
 body {
   margin: 0;
   padding: 2rem;
   font-family: system-ui, sans-serif;
   line-height: 1.6;
-  color: #1a1a1a;
+  color: var(--color-ink);
+  background: #f7f8fa;
 }
 
 main {
-  max-width: 40rem;
+  max-width: 42rem;
   margin: 0 auto;
 }
 
-a {
-  color: #0b5fff;
-}
-
-form {
+nav[aria-label="site"] {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  align-items: center;
-  margin-block: 1.5rem;
+  gap: 1rem;
+  max-width: 42rem;
+  margin: 0 auto 1.5rem;
 }
 
-input {
-  flex: 1;
-  min-width: 12rem;
-  padding: 0.4rem 0.6rem;
-  font: inherit;
+a {
+  color: var(--color-accent);
+}
+
+h1 {
+  font-size: 1.5rem;
+  margin-bottom: 0.25rem;
+}
+
+h2 {
+  font-size: 1.1rem;
+  margin-top: 2rem;
 }
 
 button {
-  padding: 0.4rem 1rem;
+  padding: 0.5rem 1.1rem;
   font: inherit;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-accent);
+  background: var(--color-accent);
+  color: #fff;
+  cursor: pointer;
 }
 
-#messages {
-  padding-inline-start: 1.2rem;
+button:hover {
+  filter: brightness(0.92);
+}
+
+button:focus-visible {
+  outline: 3px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.banner {
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius);
+  margin-block: 1rem;
+}
+
+.banner--error {
+  background: #fdecec;
+  border: 1px solid #e2a3a3;
+  color: #8a1f1f;
+}
+
+.banner--success {
+  background: #e8f6ec;
+  border: 1px solid #a3d9b5;
+  color: #17603a;
+}
+
+/* Booking controls (Step 1-3: date, time, hall) */
+.booking-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 1rem;
+  margin-block: 1.5rem;
+}
+
+.booking-controls__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.booking-controls__field input,
+.booking-controls__field select {
+  padding: 0.4rem 0.6rem;
+  font: inherit;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  min-width: 10rem;
+}
+
+.hall-toggle {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+
+.hall-toggle legend {
+  font-size: 0.85rem;
+  color: var(--color-muted);
+  padding: 0;
+}
+
+.hall-option {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.95rem;
+}
+
+.hall-option input {
+  width: auto;
+}
+
+/* Free Student Hour quick preview */
+.free-hour-preview {
+  padding: 0.6rem 0.9rem;
+  border-radius: var(--radius);
+  background: #eef4ff;
+  border: 1px solid #cbdcfb;
+  width: fit-content;
+}
+
+/* Visual court map (Step 4) */
+.court-map {
+  margin-block: 2rem;
+}
+
+.court-map__caption {
+  margin-top: 0;
+  color: var(--color-muted);
+  font-size: 0.85rem;
+  font-style: italic;
+}
+
+.court-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.75rem;
+  margin: 0;
+}
+
+.court-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  padding: 1rem 0.5rem;
+  min-height: 4.5rem;
+  border-radius: var(--radius);
+  font: inherit;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.1s ease;
+}
+
+.court-tile:active {
+  transform: scale(0.98);
+}
+
+.court-tile--available {
+  background: #fff;
+  border: 2px solid var(--color-available-border);
+  color: var(--color-ink);
+  cursor: pointer;
+}
+
+.court-tile--available:hover {
+  background: #eef4ff;
+}
+
+.court-tile--selected {
+  background: var(--color-selected-bg);
+  border: 2px solid var(--color-selected-bg);
+  color: var(--color-selected-fg);
+  cursor: pointer;
+}
+
+.court-tile--booked {
+  background: var(--color-booked-bg);
+  border: 2px solid var(--color-booked-bg);
+  color: var(--color-booked-fg);
+  cursor: not-allowed;
+}
+
+.court-tile__label {
+  font-weight: 600;
+}
+
+.court-tile__status {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.court-map__legend {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+  font-size: 0.8rem;
+  color: var(--color-muted);
+  padding: 0;
+}
+
+.legend-swatch::before {
+  content: "";
+  display: inline-block;
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 0.2rem;
+  margin-right: 0.35rem;
+  vertical-align: middle;
+}
+
+.legend-swatch--available::before {
+  background: #fff;
+  border: 2px solid var(--color-available-border);
+}
+
+.legend-swatch--selected::before {
+  background: var(--color-selected-bg);
+}
+
+.legend-swatch--booked::before {
+  background: var(--color-booked-bg);
+  border: 2px solid var(--color-booked-fg);
+}
+
+/* Booking summary + Confirm Booking */
+.booking-summary {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+  background: #fff;
+}
+
+.booking-summary__details {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem 1rem;
+  margin: 0 0 1rem;
+}
+
+.booking-summary__details div {
+  display: flex;
+  flex-direction: column;
+}
+
+.booking-summary__details dt {
+  font-size: 0.75rem;
+  color: var(--color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.booking-summary__details dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+.pricing-status {
+  display: flex;
+  gap: 0.5rem;
+  align-items: baseline;
+  font-size: 1.05rem;
+}
+
+/* My Bookings */
+.booking-list {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 1rem;
+}
+
+.booking-card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 1rem 1.25rem;
+  background: #fff;
+}
+
+.booking-card p {
+  margin: 0.2rem 0;
+}
+
+.booking-card__court {
+  font-weight: 600;
+  font-size: 1.05rem;
+}
+
+.booking-card__pricing {
+  color: var(--color-muted);
+}
+
+@media (max-width: 480px) {
+  body {
+    padding: 1.25rem;
+  }
+
+  .court-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .booking-summary__details {
+    grid-template-columns: 1fr;
+  }
 }

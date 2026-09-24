@@ -1,0 +1,98 @@
+---
+export type CourtTileState = "available" | "selected" | "booked";
+
+export interface CourtTile {
+  id: number;
+  courtNumber: number;
+  name: string;
+  state: CourtTileState;
+}
+
+interface Props {
+  hallLabel: string;
+  tiles: CourtTile[];
+  bookingDate: string;
+  startTime: string;
+  hallSlug: string;
+}
+
+const { hallLabel, tiles, bookingDate, startTime, hallSlug } = Astro.props;
+---
+
+<section class="court-map" aria-labelledby="court-map-heading">
+  <h2 id="court-map-heading">{hallLabel}</h2>
+  <p class="court-map__caption">Schematic / not to scale</p>
+
+  <form method="get" action="/" class="court-grid" data-court-form>
+    <input type="hidden" name="date" value={bookingDate} />
+    <input type="hidden" name="time" value={startTime} />
+    <input type="hidden" name="hall" value={hallSlug} />
+
+    {
+      tiles.map((tile) => (
+        <button
+          type="submit"
+          name="courtId"
+          value={tile.id}
+          disabled={tile.state === "booked"}
+          aria-pressed={tile.state === "selected"}
+          aria-label={`Court ${tile.courtNumber}, ${tile.state}`}
+          data-court-id={tile.id}
+          data-court-name={tile.name}
+          class={`court-tile court-tile--${tile.state}`}
+        >
+          <span class="court-tile__label">Court {tile.courtNumber}</span>
+          <span class="court-tile__status" data-court-status>
+            {tile.state === "booked" ? "Booked" : tile.state === "selected" ? "Selected" : "Available"}
+          </span>
+        </button>
+      ))
+    }
+  </form>
+
+  <p class="court-map__legend">
+    <span class="legend-swatch legend-swatch--available">Available</span>
+    <span class="legend-swatch legend-swatch--selected">Selected</span>
+    <span class="legend-swatch legend-swatch--booked">Booked</span>
+  </p>
+</section>
+
+<script>
+  // Progressive enhancement: with JS, clicking an available court updates
+  // the map and the booking summary in place instead of navigating. This is
+  // safe because the *set* of courts on screen — and which of them are
+  // booked — was already decided by the server for this exact
+  // date/time/hall; picking a different one of THOSE courts needs no new
+  // server round trip. Changing date/time/hall still submits the form for
+  // real, because that changes which courts even exist to pick from.
+  const grid = document.querySelector<HTMLFormElement>("[data-court-form]");
+  const summary = document.querySelector<HTMLElement>("[data-booking-summary]");
+  const summaryCourtName = document.querySelector<HTMLElement>("[data-summary-court-name]");
+  const confirmCourtId = document.querySelector<HTMLInputElement>("[data-confirm-court-id]");
+
+  grid?.addEventListener("click", (event) => {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    const button = target.closest("button[data-court-id]");
+    if (!(button instanceof HTMLButtonElement) || button.disabled) return;
+
+    event.preventDefault();
+
+    for (const other of grid.querySelectorAll<HTMLButtonElement>("button[data-court-id]")) {
+      const isThisOne = other === button;
+      other.classList.toggle("court-tile--selected", isThisOne);
+      other.classList.toggle("court-tile--available", !isThisOne && !other.disabled);
+      other.setAttribute("aria-pressed", String(isThisOne));
+      const status = other.querySelector("[data-court-status]");
+      if (status) status.textContent = isThisOne ? "Selected" : "Available";
+    }
+
+    if (summaryCourtName) summaryCourtName.textContent = button.dataset.courtName ?? "";
+    if (confirmCourtId) confirmCourtId.value = button.dataset.courtId ?? "";
+    summary?.removeAttribute("hidden");
+
+    const url = new URL(window.location.href);
+    url.searchParams.set("courtId", button.dataset.courtId ?? "");
+    history.replaceState(null, "", url);
+  });
+</script>

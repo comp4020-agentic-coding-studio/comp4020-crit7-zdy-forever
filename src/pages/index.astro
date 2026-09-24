@@ -1,8 +1,57 @@
 ---
-import { listMessages } from "../lib/db";
+import BookingControls from "../components/BookingControls.astro";
+import BookingSummary from "../components/BookingSummary.astro";
+import CourtMap, { type CourtTile } from "../components/CourtMap.astro";
+import {
+  bookedCourtIdsFor,
+  DEMO_STUDENT_ID,
+  hallLabelFor,
+  isEligibleForFreeHour,
+  isValidHallSlug,
+  listCourtsForHall,
+  type HallSlug,
+} from "../lib/booking";
+import { formatDateLong, isValidDate, isValidTimeSlot, TIME_SLOTS, todayIso } from "../lib/dates";
 import "../styles.css";
 
-const messages = listMessages();
+const params = Astro.url.searchParams;
+
+const hallParam = params.get("hall") ?? "";
+const hallSlug: HallSlug = isValidHallSlug(hallParam) ? hallParam : "old";
+
+const dateParam = params.get("date") ?? "";
+const bookingDate = isValidDate(dateParam) ? dateParam : todayIso();
+
+const timeParam = params.get("time") ?? "";
+const startTime = isValidTimeSlot(timeParam) ? timeParam : TIME_SLOTS[0];
+
+const courts = listCourtsForHall(hallSlug);
+const bookedCourtIds = bookedCourtIdsFor(hallSlug, bookingDate, startTime);
+
+const courtIdParam = Number(params.get("courtId"));
+const selectedCourt =
+  Number.isInteger(courtIdParam) && courtIdParam > 0
+    ? courts.find((court) => court.id === courtIdParam && !bookedCourtIds.has(court.id))
+    : undefined;
+
+const tiles: CourtTile[] = courts.map((court) => ({
+  id: court.id,
+  courtNumber: court.courtNumber,
+  name: court.name,
+  state: bookedCourtIds.has(court.id) ? "booked" : court.id === selectedCourt?.id ? "selected" : "available",
+}));
+
+const hallLabel = hallLabelFor(hallSlug);
+const dateLabel = formatDateLong(bookingDate);
+const eligible = isEligibleForFreeHour(DEMO_STUDENT_ID, bookingDate, startTime);
+
+const errorParam = params.get("error");
+const errorMessage =
+  errorParam === "conflict"
+    ? "That court was just booked by someone else for this time — please choose another court."
+    : errorParam === "invalid"
+      ? "That booking request wasn't valid — please check your selection and try again."
+      : null;
 ---
 
 <!doctype html>
@@ -10,44 +59,42 @@ const messages = listMessages();
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>COMP4020 prototype</title>
+    <title>ANU Badminton Court Booking</title>
   </head>
   <body>
     <nav aria-label="site">
-      <a href="/">Guestbook</a>
+      <a href="/">Book a Court</a>
+      <a href="/bookings/">My Bookings</a>
       <a href="/readme/">About</a>
     </nav>
     <main>
-      <h1>Guestbook</h1>
-      <p>
-        A minimal full-stack starter: messages live in SQLite on the machine's
-        volume (state survives a reload and a redeploy), and new messages
-        appear in every open tab over a server-sent-events stream — open this
-        page twice and sign it in one. Replace all of this with your own
-        prototype.
+      <h1>ANU Badminton Court Booking</h1>
+
+      {errorMessage && <p role="alert" class="banner banner--error">{errorMessage}</p>}
+
+      <BookingControls bookingDate={bookingDate} startTime={startTime} hallSlug={hallSlug} />
+
+      <p class="free-hour-preview">
+        Free Student Hour:{" "}
+        {
+          eligible ? (
+            <strong>Eligible &mdash; $0.00</strong>
+          ) : (
+            <strong>Not eligible for this slot &mdash; student rate applies</strong>
+          )
+        }
       </p>
-      <form method="post" action="/api/messages">
-        <label for="body">Leave a message</label>
-        <input id="body" name="body" required maxlength="500" />
-        <button>Sign</button>
-      </form>
-      <ul id="messages">
-        {messages.map((message) => <li>{message.body}</li>)}
-      </ul>
+
+      <CourtMap hallLabel={hallLabel} tiles={tiles} bookingDate={bookingDate} startTime={startTime} hallSlug={hallSlug} />
+
+      <BookingSummary
+        hallLabel={hallLabel}
+        bookingDate={bookingDate}
+        dateLabel={dateLabel}
+        startTime={startTime}
+        eligible={eligible}
+        selectedCourt={selectedCourt}
+      />
     </main>
-    <script>
-      // The live half of the demo: subscribe to the SSE stream and prepend
-      // messages as they arrive. The form itself needs none of this — its
-      // POST + redirect re-renders the submitting tab from SQLite; this
-      // stream is how every other tab finds out.
-      const list = document.querySelector("#messages");
-      const source = new EventSource("/api/events");
-      source.addEventListener("message", (event) => {
-        const message = JSON.parse(event.data);
-        const item = document.createElement("li");
-        item.textContent = message.body;
-        list?.prepend(item);
-      });
-    </script>
   </body>
 </html>
