@@ -178,7 +178,22 @@ new tables first (a pure addition, migration `0001`), then remove
 
 ## Deployment
 
-Fly.io deployment was not re-run in this session (see "How I got here"
-above for why: nothing in `fly.toml`, the `Dockerfile`, or the volume
-mount needed to change), so there is nothing to report here beyond the
-scaffold's existing, unmodified pipeline.
+Nothing in `fly.toml`, the `Dockerfile`, or the volume mount needed to
+change (see "How I got here" above), so the scaffold's existing pipeline
+was reused as-is: `flyctl deploy --remote-only --ha=false -a
+comp4020-crit7-zdy-forever`, authenticated with the course-issued
+`FLY_API_TOKEN` from `mise.local.toml` (gitignored, not committed).
+
+The first deploy run failed with `Error: unauthorized` even though `fly
+auth whoami` succeeded — `flyctl` was using a personal login rather than
+the course token, since the token has to be exported into the shell
+environment (`eval "$(mise env)"`) before invoking `flyctl` directly; it
+isn't picked up automatically outside a `mise` task. Re-running the same
+deploy command after loading the token succeeded.
+
+The deploy also printed `WARNING: The app is not listening on the
+expected address`, because `min_machines_running = 0` lets the machine
+auto-stop before Fly's own post-deploy probe reaches it — not an actual
+problem. Confirmed the deployed app was genuinely healthy by requesting
+it directly: `https://comp4020-crit7-zdy-forever.fly.dev/` returned `200`
+with the expected `<title>ANU Badminton Court Booking</title>`.
