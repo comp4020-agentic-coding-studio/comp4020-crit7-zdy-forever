@@ -1,0 +1,66 @@
+---
+import { DEMO_STUDENT_ID, listBookingsForStudent } from "../lib/booking";
+import { formatDateLong, formatSlotLabel } from "../lib/dates";
+import "../styles.css";
+
+const bookings = listBookingsForStudent(DEMO_STUDENT_ID);
+
+const params = Astro.url.searchParams;
+const cancelled = params.get("cancelled") === "1";
+const notFound = params.get("error") === "not-found";
+---
+
+<!doctype html>
+<html lang="en-AU">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>My Bookings — ANU Badminton Court Booking</title>
+  </head>
+  <body>
+    <nav aria-label="site">
+      <a href="/">Book a Court</a>
+      <a href="/bookings/">My Bookings</a>
+      <a href="/readme/">About</a>
+    </nav>
+    <main>
+      <h1>My Bookings</h1>
+
+      {notFound && (
+        <p role="alert" class="banner banner--error">
+          That booking could not be found — it may already have been cancelled.
+        </p>
+      )}
+      {cancelled && (
+        <p role="status" class="banner banner--success">
+          Booking cancelled — the court is available again.
+        </p>
+      )}
+
+      {bookings.length === 0 ? (
+        <p>
+          You have no bookings yet. <a href="/">Book a court</a>.
+        </p>
+      ) : (
+        <ul class="booking-list">
+          {bookings.map((booking) => (
+            <li class="booking-card">
+              <p class="booking-card__court">
+                {booking.hall} BM Court {booking.courtNumber}
+              </p>
+              <p>{formatDateLong(booking.bookingDate)}</p>
+              <p>{formatSlotLabel(booking.startTime)}</p>
+              <p class="booking-card__pricing">
+                {booking.isFreeStudentHour ? "Free Student Hour — $0.00" : "Student rate applies"}
+              </p>
+              <form method="post" action="/api/bookings/cancel">
+                <input type="hidden" name="bookingId" value={booking.id} />
+                <button type="submit">Cancel Booking</button>
+              </form>
+            </li>
+          ))}
+        </ul>
+      )}
+    </main>
+  </body>
+</html>
